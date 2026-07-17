@@ -54,7 +54,19 @@ function registerCreateFluidLogisticsRecipes(event) {
 		E: '#forge:tools/wrenches'
 	}).id("fluidlogistics:shaped/multi_fluid_tank")
 
+	event.recipes.gtceu.assembler('fluidlogistics:multi_fluid_tank')
+		.itemInputs('2x #forge:bolts/brass', '2x #forge:plates/brass', '#forge:glass_panes')
+		.itemOutputs('fluidlogistics:multi_fluid_tank')
+		.circuit(4)
+		.duration(50)
+		.EUt(GTValues.VA[GTValues.ULV])
+		.addMaterialInfo(true)
 
+	event.recipes.gtceu.alloy_smelter('tfg:fluidlogistics/multi_fluid_tank_from_fluid_tank')
+		.itemInputs('create:fluid_tank', '#forge:ingots/zinc')
+		.itemOutputs('fluidlogistics:multi_fluid_tank')
+    .duration(50)
+    .EUt(GTValues.VA[GTValues.ULV])
 
     event.recipes.gtceu.shaped('fluidlogistics:multi_fluid_access_port', [
 		' A ',
