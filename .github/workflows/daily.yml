@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       force:
-        description: "Rebuild even if upstream/dev matches origin/daily"
+        description: "Rebuild even if upstream/dev matches last daily sync"
         type: boolean
         default: true
 
@@ -42,14 +42,17 @@ jobs:
         run: |
           set -euo pipefail
 
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git remote add upstream https://github.com/TerraFirmaGreg-Team/Modpack-Modern.git
           git fetch upstream dev --tags
           git fetch origin daily || true
 
           UPSTREAM_SHA=$(git rev-parse upstream/dev)
-          DAILY_SHA=""
+          PREV_SHA=""
           if git rev-parse --verify origin/daily >/dev/null 2>&1; then
-            DAILY_SHA=$(git rev-parse origin/daily)
+            PREV_SHA=$(git show origin/daily:.daily-upstream-sha 2>/dev/null || true)
           fi
 
           VERSION="daily-$(date -u +%Y%m%d)"
@@ -65,18 +68,26 @@ jobs:
           echo "project_full_name=${PROJECT_NAME}-${VERSION}" >> "$GITHUB_OUTPUT"
 
           echo "Upstream: $UPSTREAM_SHA"
-          echo "Daily:    ${DAILY_SHA:-<missing>}"
+          echo "Previous: ${PREV_SHA:-<none>}"
           echo "Force:    $FORCE"
 
-          if [[ "$FORCE" != "true" && -n "$DAILY_SHA" && "$UPSTREAM_SHA" == "$DAILY_SHA" ]]; then
+          if [[ "$FORCE" != "true" && -n "$PREV_SHA" && "$UPSTREAM_SHA" == "$PREV_SHA" ]]; then
             echo "No upstream changes — skipping build."
             echo "should_build=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          git push origin "upstream/dev:refs/heads/daily" --force
+          # Build a daily branch from upstream/dev without copying workflow files.
+          # GITHUB_TOKEN cannot push changes under .github/workflows (needs `workflows` scope).
+          git checkout -B daily upstream/dev
+          rm -rf .github/workflows
+          printf '%s\n' "$UPSTREAM_SHA" > .daily-upstream-sha
+          git add -A
+          git commit -m "daily: sync upstream/dev @ ${UPSTREAM_SHA:0:7}" --allow-empty
+          git push origin daily --force
+
           echo "should_build=true" >> "$GITHUB_OUTPUT"
-          echo "✔️ Pushed origin/daily @ $UPSTREAM_SHA"
+          echo "✔️ Pushed origin/daily (upstream ${UPSTREAM_SHA:0:7}, workflows omitted)"
 
   build:
     name: "[📦] Build daily pack"
