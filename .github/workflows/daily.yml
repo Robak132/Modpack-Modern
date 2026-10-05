@@ -11,6 +11,11 @@ on:
         description: "Rebuild even if upstream/dev matches last daily sync"
         type: boolean
         default: true
+  # Allow a push of this workflow file to kick an immediate build (manual re-deploy).
+  push:
+    branches: [dev]
+    paths:
+      - ".github/workflows/daily.yml"
 
 permissions:
   contents: write
@@ -60,6 +65,8 @@ jobs:
           FORCE="false"
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             FORCE="${{ inputs.force }}"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            FORCE="true"
           fi
 
           echo "upstream_sha=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
